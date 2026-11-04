@@ -1,0 +1,14 @@
+# Build output
+build/
+*.o
+
+# Frames produced by the pipeline and the tools
+*.raw
+*.rgba
+
+# The Hexagon skeleton is shipped prebuilt: building it needs the SDK.
+!dsp/libpipe_hvx_skel.so
+
+# Editors and OS
+.DS_Store
+Thumbs.db

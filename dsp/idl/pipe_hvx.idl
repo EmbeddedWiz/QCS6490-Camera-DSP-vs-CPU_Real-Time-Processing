@@ -1,0 +1,48 @@
+/*
+ * pipe_hvx.idl — the only contract between the host and the CDSP.
+ *
+ * One call per frame.  The host passes the camera dma-buf as it is and the
+ * surface it wants filled; nothing is staged in between, so the call is a DMA
+ * mapping on both ends, not a copy.
+ *
+ * Everything pixel-wise lives behind this interface: RAW10 unpack, RAW8
+ * expansion, demosaic, white balance, AGC, the window scale and every filter.
+ * The host never touches a pixel.
+ */
+#include "remote.idl"
+
+interface pipe_hvx : remote_handle64 {
+    /*
+     * raw      — Bayer frame, RAW8 or packed RAW10, straight from the sensor
+     * stride   — bytes per raw row
+     * width    — pixels per row
+     * height   — rows
+     * scale    — 1..6: write width/scale x height/scale by averaging
+     *            scale x scale blocks; 1 leaves the frame at full size
+     * filters  — FX_* mask (same bits as the host's kEdge/kEmboss/...)
+     * strength — 1..6
+     * flags    — bit 0: raw is 8-bit; bit 1: AGC on
+     * rgba     — the host surface the DSP writes.  Rows are exactly the visible
+     *            width: stride = (width/scale, rounded *down* to 32) * 4 bytes,
+     *            and there are height/scale of them.  Rounding down is what
+     *            keeps stride == width*4, so a sink cannot shear the picture by
+     *            taking the stride from its own caps.
+     */
+    long render(in sequence<uint8_t> raw,
+                in uint32_t stride,
+                in uint32_t width,
+                in uint32_t height,
+                in uint32_t scale,
+                in uint32_t filters,
+                in uint32_t strength,
+                in uint32_t flags,
+                rout sequence<uint8_t> rgba);
+
+    /*
+     * What the exposure loop is doing, asked only when the panel redraws so
+     * the frame path keeps a single call.  shift is the gain in stops (the
+     * kernel doubles the frame shift times) and luma is the green mean it
+     * measured on the last frame.
+     */
+    long state(rout uint32_t shift, rout uint32_t luma);
+};
