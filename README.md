@@ -1,181 +1,310 @@
-# QCS6490 Camera Pipeline: DSP vs CPU Real-Time Image Processing
 
-A camera-based embedded vision project demonstrating streaming image processing on the Qualcomm QCS6490 platform, with alternative CPU and Hexagon DSP execution paths, interactive visualisation, and pixel-level output verification.
+# QCS6490 Camera Pipeline: CPU vs Hexagon DSP Real-Time Image Processing
+
+A real-time embedded camera application demonstrating image acquisition, processing, and visualisation on the Qualcomm QCS6490 heterogeneous computing platform. The project integrates a complete camera pipeline with two alternative processing engines: the application CPU and the Qualcomm Hexagon Compute DSP (CDSP/HVX).
+
+The application supports multiple camera resolutions and Bayer input formats, interactive image filters, configurable processing parameters, display scaling, automatic gain control, and runtime switching between CPU and DSP processing.
 
 **Platform:** Radxa Dragon Q6A · Qualcomm QCS6490  
-**Camera:** Raspberry Pi Camera Module with Sony IMX219 sensor  
-**Processing:** Embedded Linux · V4L2 · C++20 · Qualcomm Hexagon CDSP · HVX · FastRPC  
-**Display:** GStreamer · Wayland
+**Camera:** Sony IMX219 MIPI CSI-2 Camera Module  
+**Operating system:** Embedded Linux  
+**Camera interface:** MIPI CSI-2 · D-PHY · V4L2 · Media Controller API  
+**Programming language:** C++20  
+**Processing:** CPU · Qualcomm Hexagon CDSP · HVX · FastRPC  
+**Memory and buffers:** DMA-BUF · RPC Memory  
+**Video output:** GStreamer · Wayland
 
 ---
 
-## 1. Overview
+## 1. Project Overview
 
-This project explores how a camera-driven image-processing pipeline can be implemented on a heterogeneous embedded computing platform, using the CPU and the Qualcomm Hexagon Digital Signal Processor (DSP) as alternative execution engines.
+This project implements a complete real-time camera processing application for the Qualcomm QCS6490 platform.
 
-The application captures image frames from an IMX219 camera, processes image data using a configurable pipeline, and displays the resulting video through GStreamer. The same processing operations can be executed using either a CPU implementation or a DSP implementation, allowing their output to be compared directly.
+It combines camera acquisition, sensor configuration, image preparation, digital image processing, hardware-accelerated execution, and live video presentation in one integrated application.
 
-The primary objective is to demonstrate practical DSP integration in an embedded Linux application: processing streamed image data, invoking DSP code through the platform's remote execution interface, and validating the correctness of the resulting image.
+A central feature is the availability of two alternative processing engines:
 
-Video provides a useful engineering workload for this purpose. It produces a continuous stream of structured data, exercises multiple image-processing operations, and makes the effects of individual algorithms immediately visible. Incorrect pixel transformations, unexpected output differences, and changes caused by filter parameters can be inspected directly in the displayed image.
+- **CPU:** image processing implemented in C++ and executed on the application processor.
+- **Hexagon DSP:** corresponding image processing executed on the Qualcomm Hexagon CDSP using HVX vector instructions and FastRPC.
 
-Rather than presenting the project primarily as a numerical performance benchmark, this repository focuses on the implementation and visual verification of the processing pipeline.
+Both processing paths provide the same application functionality. The user can switch between CPU and DSP execution while working with the camera, selecting resolutions, changing image filters, adjusting filter strength, and modifying display scaling.
 
-## 2. Engineering Objectives
+The application is not limited to a single camera mode or a fixed processing configuration. Its controls allow the camera and image-processing pipeline to be explored interactively across the supported operating modes.
 
-The project addresses several practical aspects of heterogeneous embedded software development.
+The project focuses on practical heterogeneous embedded software engineering: integrating a camera subsystem, managing image buffers, implementing processing algorithms for different compute architectures, and verifying the resulting images.
 
-### 2.1 DSP integration
+## 2. Main Features
 
-The application integrates a Hexagon DSP processing path into a Linux-hosted application. The host application manages the camera pipeline, user interaction, and display, while DSP processing is accessed through Qualcomm's FastRPC mechanism.
+### 2.1 Camera integration
 
-The DSP implementation provides a practical example of moving computational work away from the application CPU and into a dedicated processing engine.
+- Sony IMX219 camera sensor integration.
+- MIPI CSI-2 camera acquisition over D-PHY.
+- Linux V4L2 capture interface.
+- Linux Media Controller API integration.
+- Automatic camera media-graph discovery and configuration.
+- Four supported camera resolutions, from VGA to the full 8-megapixel sensor resolution.
+- Bayer RGGB RAW8 and packed RAW10 capture formats.
+- Runtime camera resolution selection.
+- Sensor exposure and analogue gain controls.
+- Automatic Gain Control (AGC), with runtime enable/disable control.
 
-### 2.2 Equivalent CPU and DSP implementations
+### 2.2 Image processing
 
-The project includes separate CPU and DSP processing paths intended to implement equivalent image-processing operations.
+- Complete Bayer-to-RGBA image-processing pipeline.
+- CPU and Hexagon DSP implementations.
+- RAW8 and packed RAW10 input processing.
+- Bayer unpacking and preparation.
+- Black-level correction.
+- Software-controlled digital gain.
+- Bilinear demosaicing.
+- White balance.
+- Gamma correction.
+- Box-filter downscaling.
+- Eight interactive image filters.
+- Adjustable filter strength.
+- Multiple filters can be enabled simultaneously.
+- Consistent processing functionality across all supported camera resolutions and scaling configurations.
 
-This makes it possible to inspect the same input frame under both execution modes and verify that the two implementations produce matching output for the supported operations and parameter settings.
+### 2.3 Runtime configuration
 
-The CPU implementation serves as a reference for functional comparison. The purpose is to validate algorithmic equivalence, not to assume that either implementation is correct without testing.
+- Runtime CPU/DSP processing-engine selection.
+- Runtime camera-resolution selection.
+- Runtime display-scaling selection.
+- Interactive filter selection and combination.
+- Adjustable filter strength.
+- AGC enable/disable.
+- Sensor exposure and analogue gain configuration.
+- Live terminal control and status information.
 
-### 2.3 Streaming image processing
+### 2.4 Output and verification
 
-The application operates on camera frames as part of a live video pipeline rather than treating image processing exclusively as an offline task.
+- Live video output through GStreamer and Wayland.
+- CPU/DSP output comparison.
+- Pixel-level parity checking.
+- Automated filter and strength test matrix.
+- Synthetic-frame generation and replay.
+- Captured-frame dumping for offline inspection.
+- Runtime frame-rate and processing-time information.
+- Input and output memory-bandwidth statistics.
 
-This provides a practical environment for exploring frame acquisition, processing, buffer handling, and display integration in an embedded Linux application.
+## 3. Supported Camera Modes
 
-### 2.4 Visual verification
+### Camera Modes and Processing Compatibility
 
-The interactive interface makes the output of the processing pipeline observable in real time.
+The application provides full support for all four tested IMX219 camera resolutions:
 
-Users can enable and disable filters, change processing parameters, switch between CPU and DSP execution, and inspect the resulting images without relying exclusively on console logs or numerical reports.
+- 640 × 480 (VGA)
+- 1640 × 1232
+- 1920 × 1080 (Full HD)
+- 3280 × 2464 (Full sensor resolution, 8 MP)
 
-### 2.5 A foundation for further performance analysis
+All supported camera modes and pixel formats, including Bayer formats, are fully integrated into the processing pipeline.
 
-The current project establishes a functional and visually verifiable processing pipeline. More extensive performance characterisation—including throughput under sustained load, frame latency distributions, deadline compliance, and resource contention—is a separate measurement task and is not claimed on the basis of visual operation alone.
+The complete functionality is available in both CPU and Hexagon DSP processing modes:
 
----
+- All implemented image filters
+- All available display scaling options
+- Camera mode and resolution selection
+- Supported Bayer and other camera pixel formats
+- Automatic camera gain and light-level adjustment controls
 
-## 3. System Architecture
+All these features work with both CPU and DSP processing paths across the supported camera resolutions. No filter or scaling option is restricted to a particular resolution or processing mode.
 
-The application connects camera acquisition, image processing, and video presentation into a single pipeline.
+The complete set of implemented image filters and all available display-scaling options work across these camera resolutions. No implemented filter or scaling option is restricted to a particular resolution or processing engine.
+
+### 3.1 Camera pixel formats
+
+The application supports two Bayer input configurations:
+
+- **RAW8:** 8-bit RGGB Bayer.
+- **RAW10:** packed 10-bit RGGB Bayer.
+
+Packed RAW10 data is unpacked into the 8-bit processing representation used by the image-processing pipeline.
+
+Both input formats are handled by the CPU and DSP implementations.
+
+The supported capture configuration is selected together with the camera mode so that the processing pipeline receives image data in the expected format.
+
+The application does not claim support for every pixel format exposed by the Linux V4L2 driver. Its processing path is specifically implemented for the two RGGB Bayer configurations described above.
+
+## 4. System Architecture
+
+The application connects the camera subsystem, image-processing engines, and video output into one continuous processing pipeline.
 
 ```text
-                    Embedded Linux
-                 Radxa Dragon Q6A
-                  Qualcomm QCS6490
-                          |
-                          v
-                  IMX219 Camera
-                          |
-                          v
-                    CSI / V4L2
-                          |
-                          v
-                  Frame Acquisition
-                          |
-                          v
+                   Radxa Dragon Q6A
+                   Qualcomm QCS6490
+                           |
+                           |
+                    Sony IMX219
+                           |
+                     MIPI D-PHY
+                           |
+                     MIPI CSI-2
+                           |
+                           v
+                Linux Media Controller
+                           |
+                           v
+                     Linux V4L2
+                           |
+                           v
+                   Frame Acquisition
+                           |
+                           v
+                  Bayer Data Preparation
+                           |
+                           v
                   Image Processing
-                     /       \
-                    /         \
-                   v           v
-             CPU Engine    Hexagon CDSP
-             C++ Reference  HVX Processing
-                   \           /
-                    \         /
-                     v       v
-                  Output Frame
-                          |
-                          v
-                  GStreamer Pipeline
-                          |
-                          v
+                     /         \
+                    /           \
+                   v             v
+             CPU Processing   Hexagon CDSP
+               C++ Engine      HVX Engine
+                    \           /
+                     \         /
+                      v       v
+                    RGBA Output
+                           |
+                           v
+                    GStreamer
+                           |
+                           v
                     Wayland Sink
-                          |
-                          v
-                       Display
+                           |
+                           v
+                        Display
 ```
 
-The diagram represents the logical processing flow. The precise memory ownership, buffer sharing, and transfer behaviour depend on the implementation of the relevant pipeline components.
+The CPU and DSP paths are alternative execution engines within the same application. They process the camera image using corresponding processing operations and provide the same user-facing functionality.
 
-### 3.1 Camera acquisition
+### 4.1 Camera acquisition and media-graph configuration
 
-The application uses the Linux Video4Linux2 (V4L2) interface to acquire frames from the camera device.
+Camera frames are acquired using the Linux Video4Linux2 (V4L2) interface.
 
-The camera supplies image data in the selected sensor mode. The application configures the capture path and obtains the frames required by the processing pipeline.
+The application configures the capture device and obtains image buffers from the camera pipeline.
 
-Supported resolutions and pixel formats depend on the camera sensor mode and the corresponding driver configuration.
+Camera routing is handled through the Linux Media Controller API. The application discovers the available media topology, identifies the path between the sensor and the selected capture node, configures the required media links, and applies the corresponding formats.
 
-### 3.2 Processing engine selection
+The implementation also uses the V4L2 Sub-device API to configure the sensor and other relevant parts of the camera pipeline.
 
-The processing stage can use one of two implementations:
+This makes camera routing and configuration part of the application rather than requiring a separately executed `media-ctl` command for normal startup.
 
-- **CPU engine:** performs the image-processing arithmetic in C++ on the application processor.
-- **DSP engine:** invokes the corresponding DSP implementation on the Qualcomm Hexagon compute DSP through FastRPC.
+### 4.2 CPU processing engine
 
-The engine selection allows the same application and input data to be used for functional comparison without requiring two separate applications.
+The CPU engine implements the image-processing operations in C++.
 
-### 3.3 Video presentation
+It provides an independent scalar implementation of the processing algorithms and serves as a reference for functional comparison with the DSP engine.
 
-Processed frames are presented using GStreamer and a Wayland-compatible video sink.
+It supports the same application-level processing configuration, including the supported Bayer input formats, camera resolutions, filters, filter strengths, AGC, and display scaling.
 
-The display path provides immediate visual feedback while the application continues to acquire and process frames.
+### 4.3 Hexagon DSP processing engine
 
-### 3.4 Interactive control
+The DSP engine executes the corresponding processing operations on the Qualcomm Hexagon CDSP.
 
-The terminal-based interface provides controls for selecting filters, adjusting their strength, changing camera settings, and switching processing engines.
+The host application communicates with the DSP through Qualcomm FastRPC. The DSP-side processing code uses HVX vector instructions to perform image operations on the Hexagon architecture.
 
-This makes the application suitable for live demonstrations and interactive investigation of the processing pipeline.
+The DSP implementation is integrated into the same camera application and uses the same processing controls and filter configuration as the CPU implementation.
 
----
+### 4.4 Video presentation
 
-## 4. Image-Processing Pipeline
+Processed images are passed to a GStreamer-based output pipeline.
 
-The application includes image preparation and processing stages intended to support camera input and configurable visual effects.
+The application uses GStreamer `appsrc` and a Wayland video sink to display the processed camera stream.
 
-The following operations are described by their intended role in the pipeline. Their exact ordering, supported input formats, and execution location should be interpreted according to the implementation.
+The output surface is passed to GStreamer using DMA-BUF-backed memory. The display configuration can be adjusted independently of the selected camera resolution.
 
-| Operation | Purpose |
+## 5. Image-Processing Pipeline
+
+The application implements a configurable image-processing pipeline that prepares raw camera data and applies image transformations before presentation.
+
+The main processing stages are:
+
+| Processing stage | Purpose |
 |---|---|
-| Black-level correction | Adjusts the image's baseline pixel level. |
-| White balance | Adjusts colour-channel balance. |
-| Demosaicing | Reconstructs colour pixels from Bayer-pattern sensor data. |
-| Downscaling | Reduces image dimensions for subsequent processing or display. |
-| Gamma adjustment | Applies a nonlinear intensity transformation. |
-| Image filters | Applies configurable effects such as edge detection, sharpening, and colour transformations. |
+| RAW unpacking | Converts RAW8 or packed RAW10 input into the 8-bit processing representation. |
+| Black-level correction | Compensates for the sensor's black-level offset. |
+| Digital gain / AGC | Adjusts image intensity using the software gain-control loop. |
+| Bayer demosaicing | Reconstructs RGB colour information from the RGGB Bayer pattern using bilinear interpolation. |
+| White balance | Applies fixed-point red and blue channel gain coefficients. |
+| Box downscaling | Reduces image dimensions using block averaging. |
+| Gamma correction | Applies the gamma 2.2 display transformation. |
+| Image filters | Applies the selected visual processing effects. |
 
-Not every operation necessarily runs on both execution engines or supports every camera format. The supported combinations should be verified against the actual implementation.
+The pipeline is implemented for both CPU and DSP execution.
 
-### 4.1 Interactive filters
+The same processing functionality is available across the supported camera resolutions, filters, filter strengths, and display-scaling configurations.
 
-The application exposes the following filter selections:
+### 5.1 Interactive image filters
 
-| Key | Filter |
-|---|---|
-| `1` | Edge detection |
-| `2` | Emboss |
-| `3` | Posterization |
-| `4` | Inversion |
-| `5` | Pixelation |
-| `6` | Sketch effect |
-| `7` | Sepia |
-| `8` | Sharpening |
-| `0` | Disable all filters |
+The application provides eight selectable image filters:
 
-The `+` and `-` keys adjust the filter strength within the supported range of 1–6.
+| Key | Filter | Description |
+|---|---|---|
+| `1` | Edge Detection | Highlights image edges and transitions using a Sobel-based operation. |
+| `2` | Emboss | Produces a relief-like visual effect. |
+| `3` | Posterization | Reduces the number of tonal levels. |
+| `4` | Inversion | Inverts image intensity and colour values. |
+| `5` | Pixelation | Produces a pixelated image effect using block averaging. |
+| `6` | Sketch | Creates a sketch-like visual transformation. |
+| `7` | Sepia | Applies a sepia colour transformation. |
+| `8` | Sharpening | Enhances image detail and local contrast. |
+| `0` | No Filter | Disables all selected image filters. |
 
-These operations provide a convenient collection of visual workloads for checking processing behaviour across the CPU and DSP paths.
+Individual filters can be toggled, allowing multiple filters to be combined in one processing configuration.
 
----
+Filter strength can be adjusted interactively using the `+` and `-` keys.
 
-## 5. CPU vs DSP: Functional Equivalence
+The supported strength range is 1–6.
 
-A central feature of the project is the ability to compare the outputs of the two processing implementations.
+All implemented filters and their combinations are available in both CPU and DSP processing modes and work across the supported camera resolutions and display-scaling configurations.
 
-Both engines are intended to implement the same arithmetic for the supported processing operations. Consequently, differences in their output can reveal implementation errors, inconsistencies in parameter handling, or differences in pixel-format interpretation.
+## 6. CPU and Hexagon DSP Processing
 
-The application includes a parity-check mode:
+One of the main engineering objectives is to provide equivalent image-processing functionality on two different compute architectures.
+
+The application contains separate CPU and DSP implementations of the processing operations.
+
+The CPU implementation executes on the application processor, while the DSP implementation executes on the Hexagon CDSP using HVX.
+
+Both implementations support the same camera input configurations, processing stages, filter selection, filter strength, AGC behaviour, and output scaling.
+
+### 6.1 Functional equivalence
+
+Both implementations perform equivalent image transformations using the same processing parameters.
+
+The CPU implementation reproduces the DSP arithmetic, including integer rounding and saturation behaviour, to make output comparison meaningful.
+
+This enables direct comparison of their output using the same input image and configuration.
+
+The comparison covers:
+
+- Pixel arithmetic.
+- Processing parameters.
+- Bayer input interpretation.
+- Demosaicing.
+- Digital gain and AGC.
+- Intermediate image transformations.
+- Filter operations and their execution order.
+- Final output buffers.
+
+### 6.2 Runtime engine switching
+
+The application provides an interactive control for switching between CPU and DSP processing.
+
+The selected engine does not remove or restrict the application's camera, filter, or display configuration.
+
+Both engines support the implemented camera-processing functionality, including all available filters and scaling options.
+
+When the user changes the processing engine, the application performs an orderly internal process relaunch. It closes the current camera capture, processing engine, DSP session where applicable, and video sink, then starts itself again with the selected configuration.
+
+The application preserves the relevant runtime settings during this transition. The user does not need to stop and manually restart the program from the shell.
+
+### 6.3 Pixel-level parity verification
+
+The application includes a parity-check mode that compares CPU and DSP output using the same input frame and processing configuration.
+
+Example:
 
 ```bash
 ./build/pipeline \
@@ -186,80 +315,219 @@ The application includes a parity-check mode:
     --parity
 ```
 
-The check compares the output produced by the CPU and DSP implementations for the selected input and supported filter configurations.
+By default, parity mode executes a matrix of 60 test cases:
 
-A reported result of zero differing pixels indicates that the compared output buffers matched for that test.
+- No filter.
+- Each of the eight individual filters.
+- All filters enabled together.
+- Six filter-strength levels, from 1 to 6.
 
-For example, the following result was reported for the supplied synthetic test frame:
+The test compares the resulting RGBA output buffers.
+
+For each case, it reports:
+
+- Maximum absolute byte difference between the CPU and DSP outputs.
+- Number of output bytes whose difference exceeds three intensity levels.
+
+The overall pass criterion is based on the maximum difference and the configured `--tolerance` value.
+
+One documented test result:
 
 ```text
 [parity] worst 0, bad 0 over 60 cases
 ```
 
-This result documents the reported test outcome; it should not be interpreted as proof that all camera modes, pixel formats, filters, and parameter combinations have been exhaustively verified.
+A `worst` value of zero means that the compared output buffers matched exactly in all tested cases.
 
-### 5.1 Reproducible input
+Parity testing complements live visual inspection and helps validate the consistency of the two processing implementations.
 
-A synthetic frame can be generated without a connected camera:
+### 6.4 Reproducible test input
+
+A synthetic image can be generated without a connected camera:
 
 ```bash
 ./build/make_frame frame.raw 640 480
 ```
 
-The resulting file can then be replayed through the application.
+The generated image can then be replayed through the processing pipeline:
 
-This separates algorithmic verification from camera availability and makes it easier to reproduce a particular test input.
+```bash
+./build/pipeline \
+    --replay frame.raw \
+    --width 640 \
+    --height 480 \
+    --raw8 \
+    --sink wayland \
+    --tui
+```
 
-### 5.2 Captured-frame verification
+The replay functionality allows the same input image to be processed repeatedly using different engines, filters, strengths, and scaling configurations.
 
-The application also supports frame dumping and replay. A captured frame can be saved and processed again, allowing the same input to be examined under different processing configurations.
+It is also used by the parity test to provide identical input data to both processing implementations.
 
-This is useful for investigating discrepancies that might otherwise be difficult to reproduce during live camera operation.
+## 7. Camera Controls and Automatic Gain Control
 
----
+The application integrates camera sensor controls and software gain adjustment into the processing environment.
 
-## 6. Hardware and Software Requirements
+### 7.1 Software AGC
 
-### 6.1 Reference hardware
+Automatic Gain Control (AGC) is implemented as a software feedback loop in the image-processing engines.
 
-The documented target configuration is:
+The loop evaluates image brightness using the green-channel luminance measurement and adjusts the digital gain applied to subsequent frames.
+
+The AGC implementation is available in both CPU and DSP processing paths. The CPU implementation mirrors the DSP algorithm so that the two engines apply equivalent gain adjustments.
+
+AGC is enabled by default and can be enabled or disabled during operation using the `a` key.
+
+When AGC is disabled, the current digital gain is held rather than reset to unity. Re-enabling AGC resumes automatic adjustment from the retained gain value.
+
+### 7.2 Sensor exposure and analogue gain
+
+In addition to software AGC, the application provides access to the camera sensor's exposure and analogue gain controls through the V4L2 Sub-device API.
+
+The application discovers the available sensor controls, reads their current values and ranges, and writes requested values through the Linux driver.
+
+The driver may clamp requested values to the supported range. The application reads back the resulting values so that the reported configuration reflects what the sensor actually accepted.
+
+The sensor controls and software AGC are separate mechanisms:
+
+- Sensor exposure controls the sensor integration time.
+- Sensor analogue gain controls the sensor's analogue amplification.
+- Software AGC adjusts digital gain in the image-processing pipeline.
+
+These controls are independent of whether image processing is executed on the CPU or the Hexagon DSP.
+
+## 8. Display Scaling
+
+The application provides six display-scaling configurations.
+
+The available scale range is 1:1 through 1:6.
+
+The terminal interface allows the user to select the next available display scale using the `s` key.
+
+Downscaling is implemented using box averaging. The CPU and DSP engines implement corresponding scaling operations.
+
+All six scaling options are available with both CPU and DSP processing modes and across all four supported camera resolutions.
+
+Changing the display scale does not limit the available image filters or require a different processing engine.
+
+This makes it possible to inspect the same camera mode and image-processing configuration at different display sizes.
+
+Changing the display scale triggers the application's automatic internal relaunch so that the output surface and video sink can be recreated with the new geometry.
+
+## 9. Memory Management and Data Flow
+
+The application integrates V4L2 capture, image processing, and GStreamer presentation using Linux buffer-management mechanisms.
+
+The design uses DMA-BUF for camera-buffer sharing and RPC memory for processing surfaces.
+
+### 9.1 V4L2 capture buffers and DMA-BUF
+
+The camera capture path requests V4L2 buffers using `V4L2_MEMORY_MMAP`.
+
+The application maps the capture buffers into its address space and exports them as DMA-BUF file descriptors using `VIDIOC_EXPBUF`.
+
+These DMA-BUF descriptors allow compatible subsystems to access the same underlying image buffers without copying the complete image at every interface.
+
+The CPU engine reads the captured image through the mapped buffer.
+
+The DSP engine registers the camera-buffer mapping with the Qualcomm FastRPC subsystem using `remote_register_buf`. The same captured image is then passed to the DSP processing function without an intermediate image staging buffer.
+
+### 9.2 Processing surfaces and RPC memory
+
+Both processing engines allocate their output surfaces using Qualcomm RPC memory allocation functions.
+
+The allocated memory is mapped into the host application and associated with a file descriptor through `rpcmem_to_fd`.
+
+The CPU engine writes its output directly into these surfaces.
+
+The DSP engine writes the processed image into the corresponding RPC-memory output surface through its FastRPC processing call.
+
+This provides a common output-buffer interface for both processing engines.
+
+### 9.3 GStreamer and Wayland integration
+
+The processed output surface is wrapped in a GStreamer buffer using the DMA-BUF allocator.
+
+The application supplies the required video metadata, including the RGBA format, output dimensions, and stride.
+
+The GStreamer pipeline uses `appsrc` and `waylandsink`.
+
+The Wayland compositor can import the DMA-BUF-backed output surface for display. A buffer lease keeps the processing surface occupied until GStreamer releases the corresponding buffer, after which the application returns the surface to the processing engine.
+
+This approach avoids an explicit intermediate pixel-data copy when transferring the output surface into the GStreamer pipeline.
+
+The exact memory-sharing behaviour depends on the capabilities of the participating driver, allocator, GStreamer element, and compositor.
+
+## 10. Interactive Controls
+
+The application provides a terminal-based interface for controlling the camera and processing pipeline while the video is running.
+
+| Key | Action |
+|---|---|
+| `1`–`8` | Toggle individual image filters. |
+| `0` | Disable all selected filters. |
+| `+` / `-` | Increase or decrease filter strength. |
+| `a` | Enable or disable software AGC. |
+| `r` | Select the next supported camera resolution. |
+| `s` | Select the next display scale, from 1:1 to 1:6. |
+| `e` | Switch between CPU and DSP processing. |
+| `h` | Display help. |
+| `q` | Exit the application. |
+
+The controls allow the user to change the camera configuration, processing engine, filter combination, filter strength, gain-control behaviour, and display scaling without using separate applications.
+
+Filter selection and strength changes are applied directly to the running processing engine.
+
+Changing the camera resolution, display scale, or processing engine triggers an automatic internal process relaunch with the updated configuration. The application handles resource shutdown and reinitialisation itself.
+
+The supported camera modes, filters, and scaling configurations remain available in both processing modes.
+
+## 11. Hardware and Software Requirements
+
+### 11.1 Reference hardware
+
+The documented hardware configuration consists of:
 
 - Radxa Dragon Q6A development board.
 - Qualcomm QCS6490 system-on-chip.
-- Raspberry Pi Camera Module using the Sony IMX219 sensor.
-- Embedded Linux image with the required camera, DSP, and display support.
+- Sony IMX219 MIPI CSI-2 camera module.
+- MIPI CSI-2 camera interface over D-PHY.
+- Compatible Embedded Linux image.
+- Qualcomm Hexagon DSP runtime and firmware support.
+- Display environment with Wayland support.
 
-The DSP path depends on the availability of the appropriate Qualcomm runtime components and the prebuilt DSP skeleton.
+### 11.2 Software dependencies
 
-### 6.2 Software dependencies
-
-The host application requires the following development and runtime components:
+The host application uses:
 
 - CMake 3.16 or later.
-- A C++20-compatible compiler.
-- GStreamer 1.20 or later, including the components required by the application and `waylandsink`.
+- C++20-compatible compiler.
+- GStreamer 1.20 or later.
+- GStreamer App, Video, and DMA-BUF allocator components.
+- Wayland-compatible video sink.
 - Qualcomm FastRPC runtime libraries, including `libcdsprpc`.
-- A compatible Hexagon DSP runtime and firmware environment.
-- A running Wayland session for graphical output.
+- Compatible Qualcomm DSP runtime and firmware.
+- Linux V4L2 and Media Controller interfaces.
 
-Building the DSP skeleton from source additionally requires the appropriate Qualcomm Hexagon SDK and toolchain.
+The repository includes the prebuilt Hexagon DSP skeleton used by the application.
 
-See [`docs/dsp-build.md`](docs/dsp-build.md) for the DSP build instructions.
+Rebuilding the DSP-side component requires the appropriate Qualcomm Hexagon SDK and toolchain.
 
-The exact package names and installation procedures depend on the operating-system image used on the board.
+The exact package names and installation procedures depend on the Linux image and Qualcomm software environment installed on the target board.
 
----
+## 12. Build Instructions
 
-## 7. Build Instructions
-
-Build the host-side application from the repository root:
+Build the host application from the repository root:
 
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j4
 ```
 
-The build produces the following executables:
+The build produces the host-side application and supporting utilities.
+
+The expected build layout includes:
 
 ```text
 build/
@@ -269,23 +537,25 @@ build/
     └── libpipe_hvx_skel.so
 ```
 
-The DSP skeleton is a prebuilt component in the documented configuration. The host build does not, by itself, replace the separate Hexagon SDK build process.
+The CMake build copies the included DSP skeleton into the build directory so that the application can locate it next to the executable.
 
-Before running the DSP engine, verify that the skeleton and the required runtime dependencies are available to the application.
+The DSP skeleton is a separate Hexagon component. The host-side CMake build does not rebuild the DSP binary from source.
 
----
+Before using DSP processing, make sure that the DSP skeleton and the required Qualcomm runtime dependencies are available on the target.
 
-## 8. Running the Application
+## 13. Running the Application
 
-### 8.1 Live camera mode
+### 13.1 Live camera mode
 
-Start the application using the IMX219 camera:
+Example configuration for a 640 × 480 RAW8 camera mode:
 
 ```bash
 export XDG_RUNTIME_DIR=/run/user/1000
 export WAYLAND_DISPLAY=wayland-0
 
 ./build/pipeline \
+    --device /dev/video9 \
+    --media /dev/media0 \
     --raw8 \
     --width 640 \
     --height 480 \
@@ -293,13 +563,19 @@ export WAYLAND_DISPLAY=wayland-0
     --tui
 ```
 
-The environment variables above are examples for a system using the specified Wayland runtime directory and display name. Adjust them to match the active graphical session.
+The device paths and environment variables are examples and should match the active camera and Wayland configuration.
 
-The `--tui` option enables terminal-based controls while presenting the video in a separate window.
+The application defaults to `/dev/video9` for camera capture and `/dev/media0` for media routing. Use `--device` and `--media` to select different nodes when required.
 
-### 8.2 Selecting the CPU engine
+The `--tui` option enables the terminal-based controls while the video is displayed in a separate window.
 
-To run the processing path on the CPU:
+For other camera resolutions, select the corresponding supported sensor mode and matching Bayer input configuration.
+
+The default input format is packed RAW10. The `--raw8` option selects 8-bit Bayer capture.
+
+### 13.2 CPU processing
+
+To explicitly select the CPU processing engine:
 
 ```bash
 ./build/pipeline \
@@ -311,15 +587,17 @@ To run the processing path on the CPU:
     --tui
 ```
 
-### 8.3 Synthetic-frame replay
+The DSP engine is selected by default. The `--engine cpu` option selects the CPU implementation.
 
-Generate a test frame:
+### 13.3 Synthetic-frame replay
+
+Generate a synthetic input frame:
 
 ```bash
 ./build/make_frame frame.raw 640 480
 ```
 
-Replay it through the pipeline:
+Replay the frame:
 
 ```bash
 ./build/pipeline \
@@ -331,187 +609,212 @@ Replay it through the pipeline:
     --tui
 ```
 
-This mode is useful when testing filter behaviour without a live camera.
+This mode is useful for repeatable image-processing tests without a live camera.
 
-### 8.4 Additional command-line options
+The replay mode uses the same processing engine and image-processing pipeline as the live camera mode.
+
+### 13.4 Command-line options
 
 | Option | Description |
 |---|---|
-| `--engine cpu` | Selects the CPU processing implementation. |
-| `--no-agc` | Disables automatic gain control. |
-| `--dump frame.rgba` | Saves an output frame for inspection. |
-| `--seconds N` | Stops the application after the specified duration. |
-| `--parity` | Compares CPU and DSP output for the supported test configurations. |
-| `--replay frame.raw` | Uses a previously generated or captured frame as input. |
+| `--device PATH` | Selects the V4L2 capture node. Default: `/dev/video9`. |
+| `--media PATH` | Selects the media device used for camera routing. Default: `/dev/media0`. |
+| `--sink NAME` | Selects the video output: `wayland` or `none`. Default: `none`. |
+| `--width N` | Sets the requested camera width. Default: 640. |
+| `--height N` | Sets the requested camera height. Default: 480. |
+| `--fps N` | Sets the frame rate advertised to the video sink. Default: 30. |
+| `--scale N` | Sets display scaling from 1 to 6. Default: 1. |
+| `--raw8` | Selects 8-bit Bayer capture. Default input format: packed RAW10. |
+| `--filters LIST` | Selects filters: `none`, `all`, or a comma-separated list of filter names. |
+| `--strength N` | Sets filter strength from 1 to 6. Default: 2. |
+| `--engine NAME` | Selects `dsp` or `cpu`. Default: `dsp`. |
+| `--agc` | Enables software AGC. This is the default. |
+| `--no-agc` | Disables automatic gain adjustment and holds the current digital gain. |
+| `--exposure N` | Sets sensor exposure in lines. The resulting value is read back from the driver. |
+| `--gain N` | Sets sensor analogue gain using the driver's control value. |
+| `--dump PATH` | Saves a processed output frame as tightly packed RGBA data. |
+| `--dump-after N` | Selects which captured frame is saved. Default: 1. |
+| `--replay PATH` | Replays one saved RAW frame and exits. |
+| `--parity` | Compares CPU and DSP output for the replayed frame. Requires `--replay`. |
+| `--tolerance N` | Sets the maximum byte difference accepted by parity mode. Default: 2. |
+| `--stride N` | Sets the row stride of a replayed RAW frame. By default, the stride is inferred from the file size. |
+| `--tui` | Enables the terminal user interface. |
+| `--seconds N` | Stops the application after the specified duration. Zero means run until interrupted. |
+| `--no-route` | Disables automatic media-link configuration before capture starts. |
+| `--help`, `-h` | Displays command-line help. |
 
-The supported combinations of command-line options depend on the input mode and the selected processing path.
+The `--filters` option accepts the following names:
 
----
+```text
+edge,emboss,posterize,invert,pixelate,sketch,sepia,sharpen
+```
 
-## 9. Interactive Controls
+The special values `none` and `all` disable or enable the complete filter set.
 
-The application provides a terminal interface for controlling the processing pipeline during operation.
+The selected input dimensions and pixel format must match the input data and camera configuration.
 
-| Key | Action |
+## 14. Runtime Information and Performance
+
+The application provides runtime information about image processing, including measured frame rate, peak frame rate, processing-call timing, and input/output memory bandwidth.
+
+The documented reference configuration includes:
+
+| Parameter | Reported value |
 |---|---|
-| `1`–`8` | Select an image filter. |
-| `0` | Disable all filters. |
-| `+` / `-` | Adjust filter strength, from 1 to 6. |
-| `a` | Enable or disable automatic gain control. |
-| `r` | Select the next supported sensor resolution. |
-| `s` | Select the next window scale, from 1:1 to 1:6. |
-| `e` | Switch between DSP and CPU execution. |
-| `h` | Display help. |
-| `q` | Exit the application. |
-
-When automatic gain control is disabled, the application freezes the gain at its current setting, according to the documented behaviour.
-
-The scale control changes the display-processing scale using the DSP path as described by the application.
-
-The engine-switching and configuration controls are subject to the lifetime restrictions of the DSP runtime described in the limitations section.
-
----
-
-## 10. Performance Information
-
-The application exposes processing information through its runtime panel, including frame rate and processing-call timing.
-
-The currently documented reference configuration is:
-
-| Parameter | Value |
-|---|---|
-| Image resolution | 640 × 480 |
+| Camera resolution | 640 × 480 |
 | Input format | RAW8 |
-| Advertised frame rate | 60 fps |
+| GStreamer advertised frame rate | 60 fps |
 | Frames in flight | 1 |
-| Reported DSP processing time | Approximately 7 ms per frame |
+| DSP processing time | Approximately 7 ms per frame |
 
-These values describe the reported configuration and should not be treated as independently verified end-to-end performance measurements.
+The 60 fps value is the configured frame rate advertised to the video sink. It should not be interpreted as a guaranteed measured capture or processing rate.
 
-In particular, an advertised or configured frame rate is not equivalent to a measured sustained frame rate. Likewise, the execution time of a processing call does not necessarily include sensor acquisition, buffer handling, scheduling, display synchronisation, or presentation latency.
+The actual frame rate is measured by counting processed frames over a one-second time window.
 
-The runtime panel distinguishes the reported processing-call timing from the frame-rate information. Its `lat` field represents the wall-clock duration of one `process()` call, while `latmax` records the maximum observed value during the current second.
+The runtime panel distinguishes processing-call timing from frame-rate information:
 
-A complete performance characterisation would require additional measurements, including:
+- `fps` represents the measured number of processed frames per second.
+- `peak` represents the highest measured one-second frame rate.
+- `lat` represents the average duration of the processing-engine call during the current one-second measurement window.
+- `latmax` represents the maximum processing-engine call duration observed during that same window.
 
-- Sustained throughput under a defined workload.
-- Processing latency distributions, including median, P95, and P99.
-- End-to-end frame latency from acquisition to presentation.
-- Frame drops and missed processing deadlines.
-- CPU and DSP utilisation.
-- Memory bandwidth and buffer-transfer overhead.
-- Behaviour under thermal and resource contention.
+The processing-call duration is not the same as end-to-end camera latency. Camera acquisition, buffer handling, scheduling, display synchronisation, and presentation can contribute additional time.
 
-Those measurements are outside the primary scope of this visualisation-oriented project.
+The application also reports input and output memory bandwidth estimates based on the frame sizes and measured frame rate.
 
----
+The approximately 7 ms DSP processing time is a reported value for the reference configuration, not a guaranteed value for every resolution, filter combination, or operating condition.
 
-## 11. Memory and Data-Flow Considerations
+The application provides a practical environment for observing CPU and DSP processing behaviour under live camera input.
 
-The application integrates V4L2 capture, processing, and GStreamer presentation. The implementation includes DMA-BUF-related buffer handling intended to support efficient data exchange between pipeline components.
+A more extensive quantitative performance evaluation can additionally include sustained throughput, latency distributions, frame-drop accounting, CPU/DSP utilisation, memory bandwidth, and thermal behaviour.
 
-DMA-BUF can allow compatible devices and subsystems to share references to the same underlying buffer without requiring a CPU copy of the image data at every stage.
+## 15. Source Code Organisation
 
-However, DMA-BUF usage alone does not establish that an entire pipeline is zero-copy. The actual result depends on buffer import and export support, format compatibility, memory layout, alignment, and the requirements of individual processing and display components.
-
-The same distinction applies to DSP processing: the memory used by the CPU, the DSP runtime, and the display subsystem must be compatible with the relevant interfaces and ownership rules.
-
-For this reason, zero-copy operation should be considered an implementation property to verify rather than a universal guarantee inferred from the use of DMA-BUF.
-
----
-
-## 12. Source Code Organisation
-
-The principal components are organised as follows:
+The repository separates the Linux host application, DSP-side implementation, interface definitions, and supporting tools.
 
 | Path | Responsibility |
 |---|---|
-| `src/v4l2_capture.*` | V4L2 frame acquisition and capture-buffer handling. |
-| `src/route.*` | Media-graph discovery and configuration. |
-| `src/sensor.*` | Sensor exposure and gain controls. |
-| `src/dsp_engine.*` | FastRPC session management and DSP invocation. |
-| `src/cpu_engine.*` | CPU-side image-processing implementation. |
-| `src/sink.*` | Video-output integration with GStreamer and the display path. |
-| `src/panel.*` | Terminal runtime panel and user interaction. |
-| `dsp/` | Hexagon DSP kernels and related DSP-side components. |
-| `idl/` | Interface definitions and generated host-side stubs. |
-| `docs/dsp-build.md` | Instructions for building the DSP component. |
+| `src/main.cpp` | Application entry point, command-line parsing, runtime orchestration, event loop, and engine selection. |
+| `src/v4l2_capture.*` | V4L2 camera acquisition, MMAP buffers, DMA-BUF export, and frame handling. |
+| `src/route.*` | Camera media-graph discovery, link configuration, and sub-device format setup. |
+| `src/sensor.*` | Camera sensor control discovery, exposure, analogue gain, and read-back. |
+| `src/dsp_engine.*` | FastRPC session management, remote buffer registration, and DSP invocation. |
+| `src/cpu_engine.*` | CPU-side image-processing implementation and reference calculations. |
+| `src/engine.h` | Common processing-engine interface, filter definitions, and output geometry. |
+| `src/frame.h` | Frame and surface data structures. |
+| `src/metrics.h` | Frame-rate and processing-time measurements. |
+| `src/sink.*` | GStreamer video-output integration and DMA-BUF buffer handling. |
+| `src/panel.*` | Terminal interface, keyboard controls, and runtime status display. |
+| `dsp/` | Hexagon DSP processing kernels, HVX implementation, AGC, and DSP-side components. |
+| `idl/` | FastRPC interface definitions and generated host-side stubs. |
+| `tools/` | Supporting utilities, including synthetic-frame generation. |
 
-The host-side application coordinates the pipeline, while the DSP-side component provides the corresponding processing functionality exposed through the remote-call interface.
+The host application manages camera acquisition, runtime configuration, processing-engine selection, buffer handling, and video presentation.
 
----
+The DSP-side component provides the corresponding remote processing functionality through the FastRPC interface.
 
-## 13. Known Limitations
+## 16. Implementation Scope and Technical Considerations
 
-The following limitations apply to the documented implementation.
+The project demonstrates an integrated camera-processing application rather than an isolated image-processing kernel.
 
-### DSP session lifetime
+Its implementation covers several layers of embedded software development:
 
-The application intentionally uses a single DSP session. The current implementation has encountered stability limitations when repeatedly creating short-lived sessions on the target platform.
+**Camera and sensor integration**
 
-As a result, certain configuration changes—including engine switching, resolution changes, and display-scale changes—may require the application to restart rather than creating an additional DSP session.
+- Sony IMX219 sensor integration.
+- MIPI CSI-2 over D-PHY.
+- Linux V4L2 capture.
+- Linux Media Controller API.
+- V4L2 Sub-device API.
+- Automatic camera media-graph discovery and configuration.
+- Sensor resolution and control configuration.
+- RGGB Bayer RAW8 and packed RAW10 input.
+- Exposure and analogue gain control.
 
-### RAW8 and RAW10 modes
+**Image-processing implementation**
 
-The application must use the correct pixel format for the selected camera mode.
+- RAW8 and packed RAW10 input preparation.
+- Black-level correction.
+- Software AGC and digital gain.
+- Bilinear Bayer demosaicing.
+- White balance.
+- Box downscaling.
+- Gamma correction.
+- Eight configurable image filters.
+- Adjustable filter strength and filter combinations.
+- CPU-side processing in C++.
+- Hexagon DSP processing using HVX.
+- Equivalent processing functionality across both execution engines.
+- Multiple camera resolutions and display scales.
 
-In particular, the `--raw8` option is not appropriate for modes that supply packed 10-bit sensor data. The documented 1640 × 1232 and larger modes use RAW10 and must be configured accordingly.
+**Heterogeneous system integration**
 
-RAW8 and RAW10 are not interchangeable memory layouts. Selecting the wrong format can lead to incorrect interpretation of the captured data.
+- Qualcomm FastRPC communication.
+- Hexagon CDSP session management.
+- DSP runtime and memory integration.
+- Remote registration of DMA-BUF camera buffers.
+- RPC-memory output surfaces.
+- GStreamer DMA-BUF integration.
+- Wayland display integration.
 
-### Frame dumps
+**Runtime operation and verification**
 
-The `--dump` option writes the output buffer in its in-memory RGBA representation. The resulting file is intended for debugging and pixel-level inspection rather than as a colour-managed photographic image.
+- Interactive camera and processing controls.
+- CPU/DSP switching.
+- Camera-resolution selection.
+- Display-scale selection.
+- Image-filter selection and adjustment.
+- AGC control.
+- Sensor exposure and analogue gain configuration.
+- Pixel-level output comparison.
+- Automated parity test matrix.
+- Synthetic-frame generation and replay.
+- Runtime frame-rate and processing-time measurements.
 
-### Platform dependencies
+The application is designed to make these components work together as one operational system.
 
-The DSP execution path depends on the target platform's Qualcomm runtime, firmware, and FastRPC integration. Reproducing the complete setup on another Linux system or SoC may require different runtime components and build procedures.
+## 17. Future Development
 
-### Scope of performance validation
+Possible extensions to the project include:
 
-The project provides processing-call timing and runtime feedback, but it does not claim a complete real-time performance analysis or hard-deadline guarantee.
+- Extended CPU/DSP performance benchmarking.
+- Sustained-throughput measurements at all supported camera resolutions.
+- End-to-end frame-latency measurement.
+- Frame-drop and processing-deadline accounting.
+- CPU and DSP utilisation analysis.
+- Memory-bandwidth and buffer-transfer profiling.
+- Additional image-processing algorithms.
+- Automated regression testing of CPU/DSP output equivalence.
 
-The reported parity test validates the tested outputs, not the correctness of every possible input, camera configuration, or execution condition.
+These extensions would build on the existing camera pipeline and processing architecture.
 
----
+## 18. Project Relevance
 
-## 14. Future Work
+This project demonstrates practical engineering work in embedded Linux, camera integration, image processing, and heterogeneous computing.
 
-Potential extensions include:
+The implementation combines:
 
-- A dedicated benchmark suite for sustained CPU and DSP throughput.
-- End-to-end frame-latency measurement and percentile reporting.
-- Frame-drop detection and deadline-miss accounting.
-- Instrumentation of buffer ownership, memory transfers, and DMA-BUF interoperability.
-- Extended testing across supported sensor modes and pixel formats.
-- Stress testing under CPU load, memory contention, and thermal constraints.
-- Automated regression tests for CPU/DSP output equivalence.
-
-These extensions would complement the current application by adding quantitative system-level evidence to the existing functional and visual demonstration.
-
----
-
-## 15. Project Relevance
-
-This project demonstrates practical work at the intersection of embedded Linux, camera-based image processing, and heterogeneous computing.
-
-The main engineering areas are:
-
-- C++ application development on embedded Linux.
-- V4L2-based camera integration.
-- Image-processing pipeline design.
-- Qualcomm Hexagon DSP integration through FastRPC.
+- Embedded Linux application development in C++20.
+- Sony IMX219 camera integration.
+- MIPI CSI-2 and D-PHY.
+- V4L2 camera integration.
+- Linux Media Controller API.
+- Bayer image-data processing.
+- Camera sensor controls and software AGC.
+- Real-time image-processing pipeline design.
+- Qualcomm Hexagon CDSP integration.
+- HVX vector processing.
+- Qualcomm FastRPC.
+- DMA-BUF memory handling.
+- GStreamer and Wayland video presentation.
 - CPU/DSP functional comparison.
-- DMA-BUF-aware pipeline design.
-- GStreamer-based video presentation.
-- Interactive debugging and reproducible input testing.
+- Interactive runtime configuration and debugging.
 
-For embedded camera platforms, the ability to connect data acquisition, specialised compute engines, and a working software pipeline is an important part of system integration.
+The main result is a working camera application in which the CPU and Hexagon DSP can both execute the implemented image-processing pipeline, with the same supported camera modes, Bayer input configurations, filters, filter strengths, AGC behaviour, and display-scaling functionality.
 
-The project provides a concrete demonstration of that work and a foundation for more detailed performance and system-level investigations.
-
----
+It provides a practical demonstration of integrating camera hardware, Linux multimedia interfaces, DSP acceleration, memory management, and application-level controls on a modern heterogeneous SoC.
 
 ## License
 
-See [`LICENSE`](LICENSE) for licensing information.
+See [LICENSE](LICENSE) for licensing information.
+
